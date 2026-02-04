@@ -1,12 +1,9 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   CheckCircle, 
   XCircle, 
-  AlertCircle, 
-  RotateCcw, 
   Home, 
   BookOpen, 
-  Filter, 
   ArrowRight, 
   CheckSquare, 
   Square,
@@ -235,7 +232,7 @@ const QUIZ_DATA = [
 ];
 
 // ==========================================
-// 図解コンポーネント (画像を使用せずHTMLで再現)
+// 図解コンポーネント
 // ==========================================
 
 const DiagramRenderer = ({ diagramId }) => {
@@ -318,4 +315,497 @@ const DiagramRenderer = ({ diagramId }) => {
         <div className="bg-slate-50 p-6 rounded-lg border border-slate-200 my-4 text-center">
           <h4 className="font-bold text-slate-700 mb-4">◆ VEの価値の式</h4>
           <div className="inline-block bg-white p-4 rounded-xl shadow-md border border-slate-200">
-            <div className="text-2xl font
+            <div className="text-2xl font-bold text-slate-800 flex items-center gap-4">
+              <span>価値 (V)</span>
+              <span>=</span>
+              <div className="flex flex-col items-center">
+                <span className="border-b-2 border-slate-800 px-2">機能 (F)</span>
+                <span>コスト (C)</span>
+              </div>
+            </div>
+          </div>
+          <div className="mt-4 text-sm text-slate-600 text-left space-y-2 max-w-xs mx-auto">
+            <div className="flex items-center gap-2"><span className="text-red-500 font-bold">×</span> 機能を下げる (認められない)</div>
+            <div className="flex items-center gap-2"><span className="text-green-500 font-bold">◎</span> コスト下げて機能維持</div>
+            <div className="flex items-center gap-2"><span className="text-green-500 font-bold">◎</span> コスト維持して機能向上</div>
+            <div className="flex items-center gap-2"><span className="text-green-500 font-bold">★</span> コスト下げて機能向上 (最良)</div>
+          </div>
+        </div>
+      );
+    case "ve-function-tree":
+      return (
+        <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 my-4">
+          <h4 className="font-bold text-center mb-3 text-slate-700">◆ 機能の分類</h4>
+          <div className="tree-diagram flex items-center justify-center text-sm">
+            <div className="bg-white p-2 border rounded shadow mr-4 font-bold">機能</div>
+            <div className="h-16 border-l-2 border-slate-300 mx-2"></div>
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center">
+                <div className="w-4 border-t-2 border-slate-300"></div>
+                <div className="bg-blue-50 p-2 border border-blue-200 rounded shadow">
+                  <div className="font-bold text-blue-800">使用機能</div>
+                  <div className="text-xs text-slate-500">本来の働き</div>
+                </div>
+                <div className="w-4 border-t-2 border-slate-300"></div>
+                <div className="flex flex-col gap-2 ml-2">
+                   <span className="bg-white text-xs p-1 border rounded">基本機能</span>
+                   <span className="bg-white text-xs p-1 border rounded">二次機能</span>
+                </div>
+              </div>
+              <div className="flex items-center">
+                <div className="w-4 border-t-2 border-slate-300"></div>
+                <div className="bg-pink-50 p-2 border border-pink-200 rounded shadow">
+                  <div className="font-bold text-pink-800">貴重機能</div>
+                  <div className="text-xs text-slate-500">魅力 (色・形)</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    default:
+      return null;
+  }
+};
+
+// ==========================================
+// メインコンポーネント
+// ==========================================
+
+export default function App() {
+  const [appState, setAppState] = useState('home'); // 'home', 'quiz', 'result'
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [selectedChoice, setSelectedChoice] = useState(null);
+  const [isAnswered, setIsAnswered] = useState(false);
+  const [isCorrect, setIsCorrect] = useState(false);
+  
+  // 永続化データ (履歴)
+  const [history, setHistory] = useState({});
+
+  // フィルタリングされた問題リスト
+  const [activeQuestions, setActiveQuestions] = useState([]);
+
+  // 初期ロード
+  useEffect(() => {
+    const savedHistory = localStorage.getItem('quizApp_history_v1');
+    if (savedHistory) {
+      try {
+        setHistory(JSON.parse(savedHistory));
+      } catch (e) {
+        console.error("Failed to parse history", e);
+      }
+    }
+  }, []);
+
+  // 履歴保存
+  useEffect(() => {
+    localStorage.setItem('quizApp_history_v1', JSON.stringify(history));
+  }, [history]);
+
+  // --- Helpers ---
+
+  const getFilteredQuestions = (mode) => {
+    if (mode === 'all') return QUIZ_DATA;
+    if (mode === 'incorrect') {
+      return QUIZ_DATA.filter(q => history[q.id] && history[q.id].isCorrect === false);
+    }
+    if (mode === 'review') {
+      return QUIZ_DATA.filter(q => history[q.id] && history[q.id].needsReview === true);
+    }
+    return QUIZ_DATA;
+  };
+
+  const startQuiz = (mode) => {
+    const filtered = getFilteredQuestions(mode);
+    if (filtered.length === 0) {
+      alert("対象の問題がありません。");
+      return;
+    }
+    setActiveQuestions(filtered);
+    setCurrentQuestionIndex(0);
+    setAppState('quiz');
+    resetQuestionState();
+  };
+
+  const resetQuestionState = () => {
+    setSelectedChoice(null);
+    setIsAnswered(false);
+    setIsCorrect(false);
+  };
+
+  const handleAnswer = (choiceIndex) => {
+    if (isAnswered) return;
+    
+    const currentQ = activeQuestions[currentQuestionIndex];
+    if (!currentQ) return;
+
+    const correct = choiceIndex === currentQ.correctAnswerIndex;
+    setSelectedChoice(choiceIndex);
+    setIsCorrect(correct);
+    setIsAnswered(true);
+
+    // Update History
+    setHistory(prev => ({
+      ...prev,
+      [currentQ.id]: {
+        ...prev[currentQ.id],
+        isCorrect: correct,
+        lastAnsweredAt: new Date().toISOString(),
+        userChoiceIndex: choiceIndex,
+      }
+    }));
+  };
+
+  const toggleReview = () => {
+    const currentQ = activeQuestions[currentQuestionIndex];
+    if (!currentQ) return;
+
+    setHistory(prev => {
+      const currentStatus = prev[currentQ.id]?.needsReview || false;
+      return {
+        ...prev,
+        [currentQ.id]: {
+          ...prev[currentQ.id],
+          needsReview: !currentStatus
+        }
+      };
+    });
+  };
+
+  const nextQuestion = () => {
+    if (currentQuestionIndex < activeQuestions.length - 1) {
+      setCurrentQuestionIndex(prev => prev + 1);
+      resetQuestionState();
+    } else {
+      setAppState('result');
+    }
+  };
+
+  // --- Views ---
+
+  const HomeView = () => {
+    const totalAnswered = Object.keys(history).length;
+    const totalCorrect = Object.values(history).filter(h => h.isCorrect).length;
+    const totalReview = Object.values(history).filter(h => h.needsReview).length;
+    const accuracy = totalAnswered > 0 ? Math.round((totalCorrect / totalAnswered) * 100) : 0;
+    
+    const incorrectCount = QUIZ_DATA.filter(q => history[q.id] && !history[q.id].isCorrect).length;
+
+    const data = [
+        { name: '正解', value: totalCorrect, color: '#22c55e' },
+        { name: '不正解', value: totalAnswered - totalCorrect, color: '#ef4444' },
+    ];
+    // prevent empty chart error
+    const chartData = totalAnswered === 0 ? [{name: '未回答', value: 1, color: '#e2e8f0'}] : data;
+
+    return (
+      <div className="max-w-md mx-auto p-4 space-y-6 animate-in fade-in duration-500">
+        <header className="text-center pt-8 pb-4">
+          <h1 className="text-3xl font-bold text-slate-800 mb-2">スマート問題集</h1>
+          <p className="text-slate-500">工場計画・製品開発・VE</p>
+        </header>
+
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-bold text-slate-700 flex items-center gap-2">
+              <BarChart3 size={20} /> 学習状況
+            </h2>
+            <span className="text-sm text-slate-400">全{QUIZ_DATA.length}問</span>
+          </div>
+          
+          <div className="flex items-center justify-center h-40">
+             <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={chartData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={40}
+                    outerRadius={60}
+                    paddingAngle={5}
+                    dataKey="value"
+                    stroke="none"
+                  >
+                    {chartData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+          </div>
+          
+          <div className="grid grid-cols-3 gap-2 text-center mt-4">
+            <div className="p-2 bg-green-50 rounded-lg">
+                <div className="text-lg font-bold text-green-600">{accuracy}%</div>
+                <div className="text-xs text-green-800">正答率</div>
+            </div>
+            <div className="p-2 bg-red-50 rounded-lg">
+                <div className="text-lg font-bold text-red-600">{incorrectCount}</div>
+                <div className="text-xs text-red-800">苦手</div>
+            </div>
+             <div className="p-2 bg-orange-50 rounded-lg">
+                <div className="text-lg font-bold text-orange-600">{totalReview}</div>
+                <div className="text-xs text-orange-800">要復習</div>
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <button 
+            onClick={() => startQuiz('all')}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-6 rounded-xl shadow-md transition-all flex items-center justify-between group"
+          >
+            <div className="flex items-center gap-3">
+              <BookOpen className="text-blue-200" />
+              <div className="text-left">
+                <div className="text-sm opacity-90">すべての問題</div>
+                <div>スタート</div>
+              </div>
+            </div>
+            <ArrowRight className="group-hover:translate-x-1 transition-transform" />
+          </button>
+
+          <div className="grid grid-cols-2 gap-3">
+            <button 
+              onClick={() => startQuiz('incorrect')}
+              disabled={incorrectCount === 0}
+              className={`p-4 rounded-xl font-bold text-left shadow-sm transition-all border flex flex-col justify-between h-28 ${
+                incorrectCount > 0 
+                ? 'bg-white border-red-100 hover:border-red-300 text-slate-700' 
+                : 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
+              }`}
+            >
+              <XCircle className={incorrectCount > 0 ? "text-red-500" : "text-slate-300"} />
+              <div>
+                <div className="text-xs opacity-70">前回不正解のみ</div>
+                <div>リトライ</div>
+              </div>
+            </button>
+
+            <button 
+              onClick={() => startQuiz('review')}
+              disabled={totalReview === 0}
+              className={`p-4 rounded-xl font-bold text-left shadow-sm transition-all border flex flex-col justify-between h-28 ${
+                totalReview > 0 
+                ? 'bg-white border-orange-100 hover:border-orange-300 text-slate-700' 
+                : 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
+              }`}
+            >
+              <CheckSquare className={totalReview > 0 ? "text-orange-500" : "text-slate-300"} />
+              <div>
+                <div className="text-xs opacity-70">チェックした問題</div>
+                <div>復習モード</div>
+              </div>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const QuizView = () => {
+    const currentQ = activeQuestions[currentQuestionIndex];
+    if (!currentQ) return <div>Loading...</div>;
+
+    const needsReview = history[currentQ.id]?.needsReview || false;
+
+    return (
+      <div className="min-h-screen bg-slate-50 flex flex-col">
+        <div className="bg-white px-4 py-3 shadow-sm sticky top-0 z-10">
+          <div className="max-w-2xl mx-auto flex items-center justify-between">
+            <button onClick={() => setAppState('home')} className="text-slate-400 hover:text-slate-600">
+              <Home size={20} />
+            </button>
+            <div className="flex-1 mx-4">
+              <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-blue-500 transition-all duration-300"
+                  style={{ width: `${((currentQuestionIndex + 1) / activeQuestions.length) * 100}%` }}
+                />
+              </div>
+            </div>
+            <div className="text-sm font-bold text-slate-500">
+              {currentQuestionIndex + 1} / {activeQuestions.length}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-4 pb-24">
+          <div className="max-w-2xl mx-auto space-y-6">
+            
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+              <div className="mb-4">
+                <span className="inline-block px-3 py-1 bg-blue-50 text-blue-700 text-xs font-bold rounded-full mb-2">
+                  {currentQ.category}
+                </span>
+                <h2 className="text-lg font-bold text-slate-800 leading-relaxed">
+                  {currentQ.question}
+                </h2>
+              </div>
+
+              <div className="space-y-3">
+                {currentQ.choices.map((choice, idx) => {
+                  let buttonStyle = "border-slate-200 hover:bg-slate-50 hover:border-blue-300 text-slate-700";
+                  
+                  if (isAnswered) {
+                    if (idx === currentQ.correctAnswerIndex) {
+                      buttonStyle = "bg-green-50 border-green-500 text-green-700 font-bold ring-1 ring-green-500";
+                    } else if (idx === selectedChoice) {
+                      buttonStyle = "bg-red-50 border-red-500 text-red-700 opacity-60";
+                    } else {
+                      buttonStyle = "border-slate-100 text-slate-400 opacity-50";
+                    }
+                  } else if (selectedChoice === idx) {
+                    buttonStyle = "bg-blue-50 border-blue-500 text-blue-700";
+                  }
+
+                  return (
+                    <button
+                      key={idx}
+                      onClick={() => handleAnswer(idx)}
+                      disabled={isAnswered}
+                      className={`w-full p-4 rounded-xl border-2 text-left transition-all text-sm leading-relaxed relative ${buttonStyle}`}
+                    >
+                      <div className="flex gap-3">
+                         <div className="flex-shrink-0 font-bold w-6">{['ア','イ','ウ','エ'][idx]}</div>
+                         <div>{choice}</div>
+                      </div>
+                      {isAnswered && idx === currentQ.correctAnswerIndex && (
+                        <CheckCircle className="absolute right-4 top-1/2 -translate-y-1/2 text-green-600" size={20} />
+                      )}
+                      {isAnswered && idx === selectedChoice && idx !== currentQ.correctAnswerIndex && (
+                        <XCircle className="absolute right-4 top-1/2 -translate-y-1/2 text-red-500" size={20} />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {isAnswered && (
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 animate-in slide-in-from-bottom-4 duration-500">
+                <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-4">
+                  <div className={`flex items-center gap-2 text-lg font-bold ${isCorrect ? 'text-green-600' : 'text-red-500'}`}>
+                    {isCorrect ? <CheckCircle /> : <XCircle />}
+                    <span>{isCorrect ? '正解！' : '不正解...'}</span>
+                  </div>
+                  <button 
+                    onClick={toggleReview}
+                    className={`flex items-center gap-2 text-sm px-3 py-1.5 rounded-full transition-colors ${
+                      needsReview 
+                      ? 'bg-orange-100 text-orange-700 font-bold' 
+                      : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                    }`}
+                  >
+                    {needsReview ? <CheckSquare size={16}/> : <Square size={16}/>}
+                    要復習
+                  </button>
+                </div>
+
+                <div className="prose prose-sm max-w-none text-slate-700">
+                  <h3 className="text-sm font-bold text-slate-900 mb-2">【解説】</h3>
+                  <p className="mb-4">{currentQ.explanationText}</p>
+                  
+                  {currentQ.diagramId && <DiagramRenderer diagramId={currentQ.diagramId} />}
+
+                  <h4 className="text-xs font-bold text-slate-500 mt-6 mb-3 uppercase tracking-wider">選択肢の詳細</h4>
+                  <ul className="space-y-3">
+                    {currentQ.detailedExplanation.map((exp, idx) => (
+                      <li key={idx} className="flex gap-3 text-sm bg-slate-50 p-3 rounded-lg">
+                        <span className={`font-bold flex-shrink-0 ${exp.status === '○' ? 'text-green-600' : 'text-red-500'}`}>
+                          {exp.status}
+                        </span>
+                        <span>{exp.text}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {isAnswered && (
+          <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-slate-200 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+            <div className="max-w-2xl mx-auto">
+              <button
+                onClick={nextQuestion}
+                className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-3.5 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2"
+              >
+                <span>{currentQuestionIndex < activeQuestions.length - 1 ? '次の問題へ' : '結果を見る'}</span>
+                <ArrowRight size={18} />
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const ResultView = () => {
+    const correctCount = activeQuestions.filter(q => history[q.id]?.isCorrect).length;
+    const score = Math.round((correctCount / activeQuestions.length) * 100);
+
+    return (
+      <div className="min-h-screen bg-slate-50 p-4">
+        <div className="max-w-md mx-auto space-y-6 pt-8">
+          <div className="text-center space-y-2">
+            <div className="inline-block p-4 bg-yellow-100 text-yellow-600 rounded-full mb-2">
+              <Trophy size={40} />
+            </div>
+            <h2 className="text-2xl font-bold text-slate-800">お疲れ様でした！</h2>
+            <div className="text-5xl font-black text-slate-900 my-4">
+              {score}<span className="text-2xl font-medium text-slate-400">点</span>
+            </div>
+            <p className="text-slate-500">
+              {activeQuestions.length}問中 {correctCount}問 正解
+            </p>
+          </div>
+
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+            <div className="p-4 bg-slate-50 border-b border-slate-100 font-bold text-slate-600">
+              回答一覧
+            </div>
+            <div className="divide-y divide-slate-100 max-h-80 overflow-y-auto">
+              {activeQuestions.map((q, idx) => {
+                const isCorrect = history[q.id]?.isCorrect;
+                return (
+                  <div key={q.id} className="p-4 flex items-center justify-between hover:bg-slate-50">
+                     <div className="flex items-center gap-3">
+                        <span className="text-xs font-mono text-slate-400">Q{idx+1}</span>
+                        {isCorrect ? 
+                          <CheckCircle size={18} className="text-green-500" /> : 
+                          <XCircle size={18} className="text-red-500" />
+                        }
+                        <span className="text-sm font-medium text-slate-700 truncate w-48">{q.title}</span>
+                     </div>
+                     {history[q.id]?.needsReview && (
+                        <span className="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded">復習</span>
+                     )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <button
+            onClick={() => setAppState('home')}
+            className="w-full bg-white border-2 border-slate-200 hover:bg-slate-50 text-slate-700 font-bold py-3.5 rounded-xl transition-all flex items-center justify-center gap-2"
+          >
+            <Home size={18} />
+            ホームに戻る
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="font-sans text-slate-900 bg-slate-50 min-h-screen">
+      {appState === 'home' && <HomeView />}
+      {appState === 'quiz' && <QuizView />}
+      {appState === 'result' && <ResultView />}
+    </div>
+  );
+}
