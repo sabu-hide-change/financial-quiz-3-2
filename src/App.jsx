@@ -48,7 +48,7 @@ const QUIZ_DATA = [
         { label: "エ ×", text: "機能別レイアウトでは、類似した製品をグループ化するのではなく、類似した設備をまとめて配置します。類似した製品をグループ化するのは、グループ別レイアウトとなります。よって記述は不適切です。" }
       ]
     }
-  ],
+  },
   {
     id: 2,
     title: "問題 2 工場レイアウト 2",
@@ -217,7 +217,7 @@ const QUIZ_DATA = [
     options: [
       { id: "ア", text: "VEでは、製品の「機能」と「コスト」を基に、「価値（Value）」を定義する。また、その価値は、「価値 ＝ 機能 ÷ コスト」 という式で表される。" },
       { id: "イ", text: "製品の機能を維持したまま、コストを下げることで、コスト的な価値を向上する方法がある。" },
-      { id: "ウ", text: "機能を下げるが、それ以上にコストを下げて、価格に対する機能の相対的な価値を向上する方法がある。" },
+      { id: "ウ", text: "機能を下げるbutそれ以上にコストを下げて、価格に対する機能の相対的な価値を向上する方法がある。" },
       { id: "エ", text: "コストを上げるが、それ以上に機能を上げて、価格に対する機能の相対的な価値を向上する方法がある。" }
     ],
     answer: "ウ",
@@ -553,7 +553,7 @@ export default function App() {
                     <h4 className="text-sm font-bold text-white">前回の学習データが見つかりました</h4>
                     <p className="text-xs text-slate-300 mt-1">
                       前回は【{lastProgress.mode === "all" ? "すべての問題" : lastProgress.mode === "wrong" ? "前回不正解" : "要復習"}】の 
-                      <span className="font-bold text-indigo-400 mx-1">問題 {lastProgress.index + 1}</span> まで学習を進めています。
+                      <span className="font-bold text-indigo-400 mx-1">問題 {lastProgress.index + 1}</span> から中断しています。
                     </p>
                   </div>
                 </div>
@@ -790,19 +790,19 @@ export default function App() {
                       <div className="text-center font-bold text-xs tracking-wider text-slate-400 border-b border-slate-800 pb-2">◆ 工場レイアウトの4大分類モデル ◆</div>
                       <div className="grid sm:grid-cols-2 gap-3 text-xs">
                         <div className="bg-slate-800/50 p-3 rounded-lg border border-slate-700/40">
-                          <h5 className="font-bold text-white text-slate-200 border-b border-slate-700 pb-1 mb-1.5 flex items-center justify-between"><span>固定式レイアウト</span><span className="text-[10px] text-amber-400">製品は固定</span></h5>
+                          <h5 className="font-bold text-slate-200 border-b border-slate-700 pb-1 mb-1.5 flex items-center justify-between"><span>固定式レイアウト</span><span className="text-[10px] text-amber-400">製品は固定</span></h5>
                           <p className="text-slate-400 leading-tight">船舶や大型重量物。材料、工具や作業者が移動。</p>
                         </div>
                         <div className="bg-slate-800/50 p-3 rounded-lg border border-slate-700/40">
-                          <h5 className="font-bold text-white text-slate-200 border-b border-slate-700 pb-1 mb-1.5 flex items-center justify-between"><span>機能別レイアウト</span><span className="text-[10px] text-indigo-400">機能を重視</span></h5>
+                          <h5 className="font-bold text-slate-200 border-b border-slate-700 pb-1 mb-1.5 flex items-center justify-between"><span>機能別レイアウト</span><span className="text-[10px] text-indigo-400">機能を重視</span></h5>
                           <p className="text-slate-400 leading-tight">類似した機能の設備をまとめて配置。ジョブショップ型。</p>
                         </div>
                         <div className="bg-slate-800/50 p-3 rounded-lg border border-slate-700/40">
-                          <h5 className="font-bold text-white text-slate-200 border-b border-slate-700 pb-1 mb-1.5 flex items-center justify-between"><span>製品別レイアウト</span><span className="text-[10px] text-emerald-400">製品の流れ重視</span></h5>
+                          <h5 className="font-bold text-slate-200 border-b border-slate-700 pb-1 mb-1.5 flex items-center justify-between"><span>製品別レイアウト</span><span className="text-[10px] text-emerald-400">製品の流れ重視</span></h5>
                           <p className="text-slate-400 leading-tight">加工順序に沿って直線的に設備を配置。フローショップ型。</p>
                         </div>
                         <div className="bg-slate-800/50 p-3 rounded-lg border border-slate-700/40">
-                          <h5 className="font-bold text-white text-slate-200 border-b border-slate-700 pb-1 mb-1.5 flex items-center justify-between"><span>グループ別レイアウト</span><span className="text-[10px] text-pink-400">グループ化で生産</span></h5>
+                          <h5 className="font-bold text-slate-200 border-b border-slate-700 pb-1 mb-1.5 flex items-center justify-between"><span>グループ別レイアウト</span><span className="text-[10px] text-pink-400">グループ化で生産</span></h5>
                           <p className="text-slate-400 leading-tight">中間的配置。グループテクノロジーを用いて類似製品を共通ライン化。</p>
                         </div>
                       </div>
