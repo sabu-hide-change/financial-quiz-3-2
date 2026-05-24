@@ -242,7 +242,7 @@ const QUIZ_DATA = [
     ],
     answer: "ウ",
     explanation: {
-      summary: "VE（Value Engineering：価値工学）における価値の定義式 $V = F / C$（Value = Function / Cost）に関する原則問題です。",
+      summary: "VE（Value Engineering：価値工学）における価値の定義式 V = F / C（Value = Function / Cost）に関する原則問題です。",
       patterns: [
         "① コストダウンによる向上：C↓, F→ (機能を維持しコストを下げる)",
         "② 機能向上による向上：C→, F↑ (コストを維持し機能を上げる)",
